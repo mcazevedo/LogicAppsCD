@@ -28,7 +28,7 @@
                 ],
                 "customParameterValues": {},
                 "nonSecretParameterValues": {
-                    "vaultName": "adf2kv2",
+                    "vaultName": "adf1kv1",
                     "token:TenantId": "470f61c1-1881-44bb-b916-cf2ad50202c4",
                     "token:grantType": "code"
                 },
