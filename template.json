@@ -1,0 +1,131 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "workflows_teuzin_name": {
+            "defaultValue": "teuzin",
+            "type": "String"
+        },
+        "connections_keyvault_1_name": {
+            "defaultValue": "keyvault-1",
+            "type": "String"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Web/connections",
+            "apiVersion": "2016-06-01",
+            "name": "[parameters('connections_keyvault_1_name')]",
+            "location": "eastus",
+            "kind": "V1",
+            "properties": {
+                "displayName": "live.com#macaraz@outlook.com",
+                "statuses": [
+                    {
+                        "status": "Connected"
+                    }
+                ],
+                "customParameterValues": {},
+                "nonSecretParameterValues": {
+                    "vaultName": "adf2kv2",
+                    "token:TenantId": "470f61c1-1881-44bb-b916-cf2ad50202c4",
+                    "token:grantType": "code"
+                },
+                "createdTime": "2021-09-13T08:29:30.1416931Z",
+                "changedTime": "2021-09-16T09:17:43.1762826Z",
+                "api": {
+                    "name": "keyvault",
+                    "displayName": "Azure Key Vault",
+                    "description": "Azure Key Vault is a service to securely store and access secrets.",
+                    "iconUri": "https://connectoricons-prod.azureedge.net/releases/v1.0.1503/1.0.1503.2513/keyvault/icon.png",
+                    "brandColor": "#0079d6",
+                    "id": "/subscriptions/02ec76b8-036d-403a-a2a9-33897befb584/providers/Microsoft.Web/locations/eastus/managedApis/keyvault",
+                    "type": "Microsoft.Web/locations/managedApis"
+                },
+                "testLinks": []
+            }
+        },
+        {
+            "type": "Microsoft.Logic/workflows",
+            "apiVersion": "2017-07-01",
+            "name": "[parameters('workflows_teuzin_name')]",
+            "location": "eastus",
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/connections', parameters('connections_keyvault_1_name'))]"
+            ],
+            "properties": {
+                "state": "Disabled",
+                "definition": {
+                    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "$connections": {
+                            "defaultValue": {},
+                            "type": "Object"
+                        }
+                    },
+                    "triggers": {
+                        "Recurrence": {
+                            "recurrence": {
+                                "frequency": "Second",
+                                "interval": 300
+                            },
+                            "evaluatedRecurrence": {
+                                "frequency": "Second",
+                                "interval": 300
+                            },
+                            "type": "Recurrence"
+                        }
+                    },
+                    "actions": {
+                        "Get_secret": {
+                            "runAfter": {},
+                            "type": "ApiConnection",
+                            "inputs": {
+                                "host": {
+                                    "connection": {
+                                        "name": "@parameters('$connections')['keyvault_1']['connectionId']"
+                                    }
+                                },
+                                "method": "get",
+                                "path": "/secrets/@{encodeURIComponent('tokenBooksOrders')}/value"
+                            }
+                        },
+                        "HTTP": {
+                            "runAfter": {
+                                "Get_secret": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Http",
+                            "inputs": {
+                                "body": {
+                                    "CustomerName": "John",
+                                    "bookId": 1
+                                },
+                                "headers": {
+                                    "Authorization": "@body('Get_secret')?['value']"
+                                },
+                                "method": "POST",
+                                "uri": "https://simple-books-api.glitch.me/orders"
+                            }
+                        }
+                    },
+                    "outputs": {}
+                },
+                "parameters": {
+                    "$connections": {
+                        "value": {
+                            "keyvault_1": {
+                                "connectionId": "[resourceId('Microsoft.Web/connections', parameters('connections_keyvault_1_name'))]",
+                                "connectionName": "keyvault-1",
+                                "id": "/subscriptions/02ec76b8-036d-403a-a2a9-33897befb584/providers/Microsoft.Web/locations/eastus/managedApis/keyvault"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}
