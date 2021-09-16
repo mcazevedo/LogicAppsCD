@@ -1,0 +1,95 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "workflows_teuzin_name": {
+            "defaultValue": "teuzin",
+            "type": "String"
+        },
+        "connections_keyvault_1_externalid": {
+            "defaultValue": "/subscriptions/02ec76b8-036d-403a-a2a9-33897befb584/resourceGroups/ADF2/providers/Microsoft.Web/connections/keyvault-1",
+            "type": "String"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Logic/workflows",
+            "apiVersion": "2017-07-01",
+            "name": "[parameters('workflows_teuzin_name')]",
+            "location": "eastus",
+            "properties": {
+                "state": "Enabled",
+                "definition": {
+                    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {
+                        "$connections": {
+                            "defaultValue": {},
+                            "type": "Object"
+                        }
+                    },
+                    "triggers": {
+                        "Recurrence": {
+                            "recurrence": {
+                                "frequency": "Second",
+                                "interval": 30
+                            },
+                            "evaluatedRecurrence": {
+                                "frequency": "Second",
+                                "interval": 30
+                            },
+                            "type": "Recurrence"
+                        }
+                    },
+                    "actions": {
+                        "Get_secret": {
+                            "runAfter": {},
+                            "type": "ApiConnection",
+                            "inputs": {
+                                "host": {
+                                    "connection": {
+                                        "name": "@parameters('$connections')['keyvault_1']['connectionId']"
+                                    }
+                                },
+                                "method": "get",
+                                "path": "/secrets/@{encodeURIComponent('tokenBooksOrders')}/value"
+                            }
+                        },
+                        "HTTP": {
+                            "runAfter": {
+                                "Get_secret": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "type": "Http",
+                            "inputs": {
+                                "body": {
+                                    "CustomerName": "John",
+                                    "bookId": 1
+                                },
+                                "headers": {
+                                    "Authorization": "@body('Get_secret')?['value']"
+                                },
+                                "method": "POST",
+                                "uri": "https://simple-books-api.glitch.me/orders"
+                            }
+                        }
+                    },
+                    "outputs": {}
+                },
+                "parameters": {
+                    "$connections": {
+                        "value": {
+                            "keyvault_1": {
+                                "connectionId": "[parameters('connections_keyvault_1_externalid')]",
+                                "connectionName": "keyvault-1",
+                                "id": "/subscriptions/02ec76b8-036d-403a-a2a9-33897befb584/providers/Microsoft.Web/locations/eastus/managedApis/keyvault"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    ]
+}
